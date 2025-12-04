@@ -12,69 +12,11 @@
 #include <cstdlib>
 // for size_t and malloc/memset when compiled as C++
 #include <cstddef>
-#include <iostream>
+#include<iostream>
 #include <set>
-#include <dlfcn.h>
-#include <mutex>
 using namespace std;
 #define QK_I2_S 128
 #define QK_I2 128
-
-// AIE Library Handles
-static void* libdot_handle = nullptr;
-typedef int (*init_kernels_t)(const char*, const char*);
-typedef void (*run_2560_t)(uint8_t*, int8_t*, float*);
-typedef void (*run_6912_t)(uint8_t*, int8_t*, float*);
-
-static init_kernels_t init_kernels_ptr = nullptr;
-static run_2560_t run_2560_ptr = nullptr;
-static run_6912_t run_6912_ptr = nullptr;
-static std::mutex aie_mutex;
-static bool aie_initialized = false;
-static bool aie_load_failed = false;
-
-void load_aie_lib() {
-    std::lock_guard<std::mutex> lock(aie_mutex);
-    if (aie_initialized || aie_load_failed) return;
-
-    // Try to load from current directory or build directory
-    const char* lib_paths[] = {"./libdot.so", "./build/libdot.so", "../libdot.so"};
-    for (const char* path : lib_paths) {
-        libdot_handle = dlopen(path, RTLD_LAZY);
-        if (libdot_handle) break;
-    }
-
-    if (!libdot_handle) {
-        std::cerr << "Failed to load libdot.so: " << dlerror() << std::endl;
-        aie_load_failed = true;
-        return;
-    }
-
-    init_kernels_ptr = (init_kernels_t)dlsym(libdot_handle, "init_kernels");
-    run_2560_ptr = (run_2560_t)dlsym(libdot_handle, "run_2560");
-    run_6912_ptr = (run_6912_t)dlsym(libdot_handle, "run_6912");
-
-    if (!init_kernels_ptr || !run_2560_ptr || !run_6912_ptr) {
-        std::cerr << "Failed to load symbols from libdot.so" << std::endl;
-        dlclose(libdot_handle);
-        libdot_handle = nullptr;
-        aie_load_failed = true;
-        return;
-    }
-
-    // Initialize kernels
-    // Assuming xclbin is in build/
-    if (init_kernels_ptr("build/dot_lib.xclbin", "build/dot_lib_insts.bin") != 0) {
-        std::cerr << "Failed to initialize AIE kernels" << std::endl;
-        dlclose(libdot_handle);
-        libdot_handle = nullptr;
-        aie_load_failed = true;
-        return;
-    }
-
-    aie_initialized = true;
-    std::cout << "AIE Library Loaded and Initialized Successfully" << std::endl;
-}
 
 std::set<int> seen;
 
@@ -142,28 +84,35 @@ void ggml_vec_dot_i2_i8_s(int n, float * s, size_t bs, const void * vx, size_t b
     (void) by;
     (void) nrc;
 
-    if (seen.insert(n).second) {  // true if n was not already in the set
-        std::cout << "New n: " << n << '\n';
-    }
-
-    // Try to load library if not loaded
-    if (!aie_initialized && !aie_load_failed) {
-        load_aie_lib();
-    }
-
-    if (aie_initialized) {
-        std::lock_guard<std::mutex> lock(aie_mutex);
-        cout<<"entering kernel";
-        if (n == 2560) {
-            run_2560_ptr((uint8_t*)vx, (int8_t*)vy, s);
-            return;
-        } else if (n == 6912) {
-            run_6912_ptr((uint8_t*)vx, (int8_t*)vy, s);
-            return;
+     if (seen.insert(n).second) {  // true if n was not already in the set
+            std::cout << "New n: " << n << '\n';
         }
+    // original SIMD kernels ignore offsets and treat pointers as already
+    // pointing to the start of the relevant block
+    const uint8_t * x = (const uint8_t *) vx;
+    const int8_t  * y = (const int8_t  *) vy;
+
+    long long acc = 0;
+
+    // total number of 128-element blocks
+    const int nb = n / QK_I2_S; // same as original: nb = n / 128
+    (void) nb;
+
+    for (int idx = 0; idx < n; ++idx) {
+        // decode the 2-bit q8 for element idx using the same layout as quantize
+        const int block = idx / QK_I2;         // which 128-element block
+        const int j = idx % QK_I2;             // position inside 128 block (0..127)
+        const int group_idx = j / 32;          // 0..3
+        const int group_pos = j % 32;          // 0..31
+        const size_t byte_index = (size_t) block * 32 + (size_t) group_pos;
+        const uint8_t packed = x[byte_index];
+        const uint8_t q8 = (packed >> (6 - 2 * group_idx)) & 0x3u; // 2-bit value 0,1,2
+
+        // original SIMD kernels operate directly on 0,1,2 codes without
+        // mapping them to -1,0,1 here
+        acc += (long long) q8 * (long long) y[idx];
+        //normally and without long long see 
     }
-    // Fallback removed as requested.
-    std::cerr << "Error: AIE kernel not run for n=" << n << " (Initialized: " << aie_initialized << ")" << std::endl;
-    exit(0);
-    if (s) *s = 0.0f;
+
+    if (s) *s = (float) acc;
 }
