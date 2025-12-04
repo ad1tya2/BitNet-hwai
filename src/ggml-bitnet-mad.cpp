@@ -38,7 +38,7 @@ void load_aie_lib() {
     if (aie_initialized || aie_load_failed) return;
 
     // Try to load from current directory or build directory
-    const char* lib_paths[] = {"./libdot.so", "./build/libdot.so", "../libdot.so"};
+    const char* lib_paths[] = {"./libdot.so", "./build/libdot.so", "./npu_build/libdot.so"};
     for (const char* path : lib_paths) {
         libdot_handle = dlopen(path, RTLD_LAZY);
         if (libdot_handle) break;
@@ -64,7 +64,7 @@ void load_aie_lib() {
 
     // Initialize kernels
     // Assuming xclbin is in build/
-    if (init_kernels_ptr("build/dot_lib.xclbin", "build/dot_lib_insts.bin") != 0) {
+    if (init_kernels_ptr("npu_build/dot_lib.xclbin", "npu_build/dot_lib_insts.bin") != 0) {
         std::cerr << "Failed to initialize AIE kernels" << std::endl;
         dlclose(libdot_handle);
         libdot_handle = nullptr;
