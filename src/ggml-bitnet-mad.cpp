@@ -153,7 +153,6 @@ void ggml_vec_dot_i2_i8_s(int n, float * s, size_t bs, const void * vx, size_t b
 
     if (aie_initialized) {
         std::lock_guard<std::mutex> lock(aie_mutex);
-        cout<<"entering kernel";
         if (n == 2560) {
             run_2560_ptr((uint8_t*)vx, (int8_t*)vy, s);
             return;
