@@ -1,4 +1,4 @@
-#if defined(GGML_BITNET_X86_TL2)
+//#if defined(GGML_BITNET_X86_TL2)
 #include "ggml-bitnet.h"
 #define GGML_BITNET_MAX_NODES 8192
 static bool initialized = false;
@@ -1164,4 +1164,4 @@ else if (m == 8640 && k == 3200) {
         /* .scales          = */ scales
     };
 }
-#endif
+//#endif

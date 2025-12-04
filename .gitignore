@@ -16,7 +16,6 @@
 *.log
 *.metallib
 *.o
-*.so
 *.tmp
 
 # IDE / OS

@@ -181,13 +181,17 @@ def gen_code():
         else:
             raise NotImplementedError()
     else:
+        print("Use pretuned:", args.use_pretuned)
+        print("Model name:", get_model_name())
         if args.use_pretuned:
             # cp preset_kernels/model_name/bitnet-lut-kernels_tl1.h to include/bitnet-lut-kernels.h
             pretuned_kernels = os.path.join("preset_kernels", get_model_name())
             if not os.path.exists(pretuned_kernels):
                 logging.error(f"Pretuned kernels not found for model {args.hf_repo}")
                 sys.exit(1)
+            print("Pretuned kernels found at:", pretuned_kernels)
             shutil.copyfile(os.path.join(pretuned_kernels, "bitnet-lut-kernels-tl2.h"), "include/bitnet-lut-kernels.h")
+            return
         if get_model_name() == "bitnet_b1_58-large":
             run_command([sys.executable, "utils/codegen_tl2.py", "--model", "bitnet_b1_58-large", "--BM", "256,128,256", "--BK", "96,192,96", "--bm", "32,32,32"], log_step="codegen")
         elif get_model_name() in llama3_f3_models:
