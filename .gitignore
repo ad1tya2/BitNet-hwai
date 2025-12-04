@@ -45,3 +45,5 @@ poetry.toml
 build/
 logs/
 3rdparty/*
+
+!npu_build/*
