@@ -74,7 +74,6 @@ void load_aie_lib() {
 
     aie_initialized = true;
     std::cout << "AIE Library Loaded and Initialized Successfully" << std::endl;
-    exit(0);
 }
 
 std::set<int> seen;
@@ -165,6 +164,5 @@ void ggml_vec_dot_i2_i8_s(int n, float * s, size_t bs, const void * vx, size_t b
     }
     // Fallback removed as requested.
     std::cout << "Error: AIE kernel not run for n=" << n << " (Initialized: " << aie_initialized << ")" << std::endl;
-    exit(0);
     if (s) *s = 0.0f;
 }
