@@ -1,0 +1,33 @@
+{
+  "aie_partition": {
+    "name": "QoS",
+    "operations_per_cycle": "2048",
+    "inference_fingerprint": "23423",
+    "pre_post_fingerprint": "12345",
+    "partition": {
+      "column_width": 4,
+      "start_columns": [
+        0
+      ]
+    },
+    "PDIs": [
+      {
+        "uuid": "6645a80b-6944-4627-a8cb-ced599ff37f8",
+        "file_name": "/notebooks/aditya.shankar/hwai-proj-mlir-aie/programming_examples/basic/dot_product/build/aie_dot_6912.mlir.prj/main.pdi",
+        "cdo_groups": [
+          {
+            "name": "DPU",
+            "type": "PRIMARY",
+            "pdi_id": "0x01",
+            "dpu_kernel_ids": [
+              "0x901"
+            ],
+            "pre_cdo_groups": [
+              "0xC1"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
